@@ -17,6 +17,7 @@ students-own [
 
 to setup
   clear-all
+  reset-ticks
   set-default-shape turtles "person"
 
   set ina-patches patches with [pxcor > 0] ;; create domestic space
@@ -28,10 +29,22 @@ to setup
   create-student
 end
 
+to go
+  scholarship
+  study
+  emigrate
+  aging
+  ask students [
+    move 0.3
+  ]
+  tick
+end
+
 to create-student
-  create-students 50
+  create-students 100
   ask students [
     move-to-empty-one-of ina-patches
+    set age int random-normal 17 1
     set color green
     set college FALSE
     set decision-abr random-normal 0.25 0.1
@@ -58,19 +71,50 @@ to move [ dist ]
 end
 
 to scholarship
+  ;; scholarship opportunity once a year
+  if ticks mod 52 = 0 [
+    ask students [
+      if college = FALSE and capital < 113 and random-float 100 < 18 [ ;; scholarship opportunity 18%
+        ;; chance to get scholarship 5%
+        ;; scholarhip add 20 to basic capital
+        set capital capital + 20
+      ]
+    ]
+  ]
+end
+
+to emigrate
+  ;; ask students with changed status to move abroad/domestic
   ask students [
-    if college = FALSE and capital < 113 and random-float 100 < 5[
-      ;; chance to get scholarship 5%
-      ;; scholarhip add 20 to basic capital
-      set capital capital + 20
+    if status = "ABR" and pcolor = red [
+      move-to-empty-one-of abr-patches
+    ]
+    if status = "INA" and pcolor = yellow [
+    move-to-empty-one-of ina-patches
     ]
   ]
 end
 
 to study
-  ask students with [capital >= 113] [
-    set college TRUE
-    set color blue
+  ask students [
+    if capital >= 113 [
+      set college TRUE
+      set status "INA"
+      set color black
+    ]
+    if capital >= 141 [
+      set college TRUE
+      set status "ABR"
+      set color yellow
+    ]
+  ]
+end
+
+to aging
+  if ticks mod 52 = 0 [
+    ask students [
+      set age age + 1
+    ]
   ]
 end
 
