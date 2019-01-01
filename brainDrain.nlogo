@@ -6,6 +6,7 @@ breed [native-abrs native-abr]
 globals [
   ina-patches
   abr-patches
+  year
 ]
 
 undirected-link-breed [friendships friendship]
@@ -16,7 +17,8 @@ students-own [
   decision-abr ;; variable decision to study abroad
   status       ;; living location of students
   capital      ;; financial status
-  friend-list  ;; create friend list
+  study-time   ;; length of study
+  degree       ;; title degree
 ]
 
 to setup
@@ -31,6 +33,7 @@ to setup
   ask abr-patches [set pcolor blue]
 
   create-student
+  set year 0
   reset-ticks
 
 end
@@ -42,6 +45,7 @@ to go
   aging
   die-naturally
   new-cohort
+  year-tick
   tick
 end
 
@@ -55,10 +59,10 @@ to create-student
     set decision-abr random-normal 0.25 0.1
     set status "INA"
     set capital random-normal 100 20
-    set friend-list []
+    set degree "High School"
   ]
   ask students [
-    create-friendships-with other n-of (count students in-radius 10) students in-radius 10
+    create-friendships-with other n-of (count students in-radius 5) students in-radius 5
   ]
 
 end
@@ -116,15 +120,31 @@ end
 to study
 
   ask students [
-    if capital >= 113 [
+    if capital >= 113 and color = green [
       set college TRUE
       set status "INA"
       set color black
+      set study-time study-time-ug 0.5
+      set degree "UG"
+
+      if capital >= 141 [
+        set college TRUE
+        set status "ABR"
+        set color yellow
+        set study-time study-time-ug 0.5
+        set degree "UG"
+      ]
     ]
-    if capital >= 141 [
-      set college TRUE
-      set status "ABR"
-      set color yellow
+  ]
+  graduate-ug
+
+end
+
+to graduate-ug
+
+  ask students [
+    if study-time = 0 and college = true and degree = "UG" [
+      set college FALSE
     ]
   ]
 
@@ -135,6 +155,9 @@ to aging
   if (ticks + 1) mod 52 = 0 [
     ask students [
       set age age + 1
+    ]
+    ask students with [college = true] [
+      set study-time study-time - 1
     ]
   ]
 
@@ -149,7 +172,7 @@ end
 to new-cohort
 
   if (ticks + 1) mod 52 = 0 [
-   create-student
+    create-student
   ]
 
 end
@@ -170,6 +193,20 @@ end
 to-report Nabr
 
   report count turtles-on abr-patches
+
+end
+
+to-report study-time-ug [x]
+
+  report ifelse-value (random-float 1 < x) [4] [5]
+
+end
+
+to year-tick
+
+  if (ticks + 1) mod 52 = 0 [
+    set year year + 1
+  ]
 
 end
 @#$#@#$#@
@@ -216,6 +253,61 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+35
+81
+102
+126
+Abroad
+count students with [color = yellow] / count students
+2
+1
+11
+
+MONITOR
+34
+133
+101
+178
+Indonesia
+count students with [color = black] / count students
+2
+1
+11
+
+MONITOR
+34
+186
+128
+231
+Total Students
+count students
+17
+1
+11
+
+MONITOR
+34
+246
+159
+291
+Graduated Students
+count students with [college = FALSE and degree = \"UG\"]
+17
+1
+11
+
+MONITOR
+35
+305
+92
+350
+Year
+year
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
