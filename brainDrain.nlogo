@@ -143,7 +143,7 @@ end
 to graduate-ug
 
   ask students [
-    if study-time = 0 and college = true and degree = "UG" [
+    if study-time = 0 and college = TRUE and degree = "UG" [
       set college FALSE
     ]
   ]
@@ -308,6 +308,23 @@ year
 17
 1
 11
+
+BUTTON
+32
+375
+157
+408
+setup go 4 years
+setup repeat 52 * 4 [go]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
