@@ -1,11 +1,14 @@
 breed [students student]
 breed [pros pro]
-breed [native natives]
+breed [native-inas native-ina]
+breed [native-abrs native-abr]
 
 globals [
   ina-patches
   abr-patches
 ]
+
+undirected-link-breed [friendships friendship]
 
 students-own [
   age          ;; student's age
@@ -13,11 +16,12 @@ students-own [
   decision-abr ;; variable decision to study abroad
   status       ;; living location of students
   capital      ;; financial status
+  friend-list  ;; create friend list
 ]
 
 to setup
+
   clear-all
-  reset-ticks
   set-default-shape turtles "person"
 
   set ina-patches patches with [pxcor > 0] ;; create domestic space
@@ -27,6 +31,8 @@ to setup
   ask abr-patches [set pcolor blue]
 
   create-student
+  reset-ticks
+
 end
 
 to go
@@ -34,15 +40,14 @@ to go
   study
   emigrate
   aging
-  ask students [
-    move 0.3
-  ]
+  die-naturally
+  new-cohort
   tick
 end
 
 to create-student
-  create-students 100
-  ask students [
+
+  create-students 100 [
     move-to-empty-one-of ina-patches
     set age int random-normal 17 1
     set color green
@@ -50,17 +55,25 @@ to create-student
     set decision-abr random-normal 0.25 0.1
     set status "INA"
     set capital random-normal 100 20
+    set friend-list []
   ]
+  ask students [
+    create-friendships-with other n-of (count students in-radius 10) students in-radius 10
+  ]
+
 end
 
 to move-to-empty-one-of [ locations ]
+
   move-to one-of locations
   while [any? other turtles-here] [
     move-to one-of locations
   ]
+
 end
 
 to move [ dist ]
+
   right random 30
   left random 30
   let turn one-of [-10 10]
@@ -68,9 +81,11 @@ to move [ dist ]
     set heading heading + turn
   ]
   forward dist
+
 end
 
 to scholarship
+
   ;; scholarship opportunity once a year
   if ticks mod 52 = 0 [
     ask students [
@@ -81,9 +96,11 @@ to scholarship
       ]
     ]
   ]
+
 end
 
 to emigrate
+
   ;; ask students with changed status to move abroad/domestic
   ask students [
     if status = "ABR" and pcolor = red [
@@ -93,9 +110,11 @@ to emigrate
     move-to-empty-one-of ina-patches
     ]
   ]
+
 end
 
 to study
+
   ask students [
     if capital >= 113 [
       set college TRUE
@@ -108,33 +127,56 @@ to study
       set color yellow
     ]
   ]
+
 end
 
 to aging
-  if ticks mod 52 = 0 [
+
+  if (ticks + 1) mod 52 = 0 [
     ask students [
       set age age + 1
     ]
   ]
+
+end
+
+to die-naturally
+
+  ask students with [age >= 21 and color = green] [ die ]
+
+end
+
+to new-cohort
+
+  if (ticks + 1) mod 52 = 0 [
+   create-student
+  ]
+
 end
 
 to-report land-ahead [ dist ]
+
   let target patch-ahead dist
   report target != nobody and shade-of? red [ pcolor ] of target
+
 end
 
 to-report Nina
+
   report count turtles-on ina-patches
+
 end
 
 to-report Nabr
+
   report count turtles-on abr-patches
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-316
+215
 10
-829
+728
 524
 -1
 -1
@@ -152,8 +194,8 @@ GRAPHICS-WINDOW
 50
 -50
 50
-0
-0
+1
+1
 1
 ticks
 30.0
