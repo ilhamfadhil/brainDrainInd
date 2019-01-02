@@ -4,9 +4,9 @@ breed [native-inas native-ina]
 breed [native-abrs native-abr]
 
 globals [
-  ina-patches
-  abr-patches
-  year
+  ina-patches  ;; domestics patches
+  abr-patches  ;; abroad patches
+  year         ;; to mark time of year
 ]
 
 undirected-link-breed [friendships friendship]
@@ -19,6 +19,8 @@ students-own [
   capital      ;; financial status
   study-time   ;; length of study
   degree       ;; title degree
+  knowledge    ;; knowledge during study period
+  skill        ;; skill after become hs worker
 ]
 
 to setup
@@ -27,12 +29,15 @@ to setup
   set-default-shape turtles "person"
 
   set ina-patches patches with [pxcor > 0] ;; create domestic space
-  ask ina-patches [set pcolor red]
+  ask ina-patches [set pcolor 19]
 
   set abr-patches patches with [pxcor < 0] ;; create abroad space
-  ask abr-patches [set pcolor blue]
+  ask abr-patches [set pcolor 99]
 
+  create-native
   create-student
+  native-create-link
+  create-pro
   set year 0
   reset-ticks
 
@@ -45,6 +50,7 @@ to go
   aging
   die-naturally
   new-cohort
+  become-hs
   year-tick
   tick
 end
@@ -60,11 +66,60 @@ to create-student
     set status "INA"
     set capital random-normal 100 20
     set degree "High School"
+    set knowledge []
+    set skill 0
   ]
   ask students [
     create-friendships-with other n-of (count students in-radius 5) students in-radius 5
   ]
 
+end
+
+to create-native
+
+  create-native-inas 25 [
+    move-to-empty-one-of ina-patches
+    set color orange
+  ]
+  create-native-abrs 25 [
+    move-to-empty-one-of abr-patches
+    set color orange
+  ]
+
+end
+
+to create-pro
+
+  create-pros 10 [
+    move-to-empty-one-of ina-patches
+    set color brown
+  ]
+  create-pros 10 [
+    move-to-empty-one-of abr-patches
+    set color brown
+  ]
+
+end
+
+to native-create-link
+  ask native-inas [
+    create-friendships-with other n-of (count turtles-on ina-patches in-radius 5) turtles-on ina-patches in-radius 5
+  ]
+  ask native-abrs [
+    create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
+  ]
+end
+
+to pro-create-link
+
+  ask pros-on ina-patches [
+    let num n-recruit self ina-patches 0.6
+    create-friendships-with other n-of (num) students-on ina-patches in-radius 5
+  ]
+  ask pros-on abr-patches [
+    let num n-recruit self abr-patches 0.8
+    create-friendships-with other n-of (num) students-on abr-patches in-radius 5
+  ]
 end
 
 to move-to-empty-one-of [ locations ]
@@ -92,25 +147,34 @@ to scholarship
 
   ;; scholarship opportunity once a year
   if ticks mod 52 = 0 [
-    ask students [
+    ask students with [degree = "High School"] [
       if college = FALSE and capital < 113 and random-float 100 < 18 [ ;; scholarship opportunity 18%
-        ;; chance to get scholarship 5%
+        ;; chance to get scholarship 18%
         ;; scholarhip add 20 to basic capital
         set capital capital + 20
       ]
     ]
+   scholarship-pg
   ]
 
+end
+
+to scholarship-pg
+  ask students with [college = FALSE and degree = "UG"] [
+      if random-float 100 < 80 [
+        set capital capital + 60
+      ]
+    ]
 end
 
 to emigrate
 
   ;; ask students with changed status to move abroad/domestic
   ask students [
-    if status = "ABR" and pcolor = red [
+    if status = "ABR" and pcolor = 19 [
       move-to-empty-one-of abr-patches
     ]
-    if status = "INA" and pcolor = yellow [
+    if status = "INA" and pcolor = 99 [
     move-to-empty-one-of ina-patches
     ]
   ]
@@ -118,7 +182,7 @@ to emigrate
 end
 
 to study
-
+  ;; study decision for undergraduate
   ask students [
     if capital >= 113 and color = green [
       set college TRUE
@@ -136,7 +200,43 @@ to study
       ]
     ]
   ]
+  earn-knowledge-ug
   graduate-ug
+  study-pg
+end
+
+to earn-knowledge-ug ;; function to create knowledge in each agent
+
+  if ticks mod 13 = 0 [ ;; assumed for each semester
+    ask students with [degree ="UG" and college = TRUE] [
+      set knowledge lput earn-knowledge 0.6 knowledge
+    ]
+  ]
+
+end
+
+to study-pg ;; study protocol for post graduate student
+
+  ask students with [college = FALSE and degree = "UG"] [
+    if capital >= 190 [
+      set college TRUE
+      set degree "PG"
+      set study-time study-time-pg
+      set color turquoise
+      set status prob-pg-abr 0.9
+    ]
+  ]
+
+end
+
+to become-hs
+
+  ask students with [study-time <= 0 and degree = "PG" and college = TRUE] [
+    set college FALSE
+    set degree "HS"
+    set color magenta
+    set skill precision (sum knowledge / length knowledge) 2
+  ]
 
 end
 
@@ -163,9 +263,10 @@ to aging
 
 end
 
-to die-naturally
+to die-naturally ;; process to die for student who is not undergraduate and post graduate
 
   ask students with [age >= 21 and color = green] [ die ]
+  ask students with [age >= 22 and college = FALSE and degree = "UG"] [ die ]
 
 end
 
@@ -196,9 +297,27 @@ to-report Nabr
 
 end
 
-to-report study-time-ug [x]
+to-report prob-pg-abr [ x ]
+
+  report ifelse-value (random-float 1 < x) ["ABR"] ["INA"]
+
+end
+
+to-report study-time-ug [x] ;; probability of learning for undergraduate student
 
   report ifelse-value (random-float 1 < x) [4] [5]
+
+end
+
+to-report study-time-pg
+
+  report item random 4 [2 3 4 5]
+
+end
+
+to-report earn-knowledge [ x ] ;; protocol to earning knowledge during study
+
+  report ifelse-value (random-float 1 < x) [1] [0]
 
 end
 
@@ -209,12 +328,42 @@ to year-tick
   ]
 
 end
+
+to-report summary [ x ] ;; function to create summary statistics of a list value
+
+  report (list (min x) (mean x) (median x) (standard-deviation x) (max x))
+  ;; example:
+  ;;         summary [attribute] of agentset
+
+end
+
+to-report perspective [x] ;; create list of friend of students
+
+  let count-stu-ina count [link-neighbors with [breed = students and status = "INA"]] of x
+  let count-stu-abr count [link-neighbors with [breed = students and status = "ABR"]] of x
+  let count-na-ina  count [link-neighbors with [breed = native-inas]] of x
+  let count-na-abr  count [link-neighbors with [breed = native-abrs]] of x
+  report (list count-stu-ina count-stu-abr count-na-ina count-na-abr)
+  ;; example:
+  ;;          perspective agent-num
+
+end
+
+to-report n-recruit [x y z] ;; create number of targeted list
+  ;; x is agent
+  ;; y is patches
+  ;; z is percentage of student in the area that aimed to included
+  report [round (count students-on y in-radius 5 * z) ]  of x
+  ;; example:
+  ;;         n-recruit agent-num patches prob
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-215
-10
-728
-524
+895
+15
+1408
+529
 -1
 -1
 5.0
@@ -238,10 +387,10 @@ ticks
 30.0
 
 BUTTON
-33
-26
-96
-59
+15
+25
+78
+58
 setup
 setup
 NIL
@@ -255,32 +404,32 @@ NIL
 1
 
 MONITOR
-35
-81
-102
-126
-Abroad
-count students with [color = yellow] / count students
+12
+77
+90
+122
+num-ug-abr
+count students with [color = yellow]
 2
 1
 11
 
 MONITOR
-34
-133
-101
-178
-Indonesia
-count students with [color = black] / count students
+10
+130
+87
+175
+num-ug-ina
+count students with [color = black]
 2
 1
 11
 
 MONITOR
-34
-186
-128
-231
+10
+180
+85
+225
 Total Students
 count students
 17
@@ -288,21 +437,21 @@ count students
 11
 
 MONITOR
-34
-246
-159
-291
-Graduated Students
+10
+235
+145
+280
+graduated-ug-students
 count students with [college = FALSE and degree = \"UG\"]
 17
 1
 11
 
 MONITOR
-35
-305
-92
-350
+10
+290
+67
+335
 Year
 year
 17
@@ -310,12 +459,12 @@ year
 11
 
 BUTTON
-32
+20
 375
-157
+145
 408
-setup go 4 years
-setup repeat 52 * 4 [go]
+setup go 8 years
+setup repeat 52 * 8 [go]
 NIL
 1
 T
@@ -325,6 +474,94 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+96
+77
+207
+122
+num-pg-students
+count students with [degree = \"PG\" and status = \"ABR\"]
+17
+1
+11
+
+MONITOR
+97
+129
+207
+174
+num-pg-ina
+count students with [color = 75 and status = \"INA\"]
+17
+1
+11
+
+MONITOR
+75
+290
+132
+335
+num-hs
+count students with [degree = \"HS\"]
+17
+1
+11
+
+PLOT
+220
+75
+615
+225
+Number of Students
+Ticks
+Number of Student
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"ug-student" 1.0 0 -14070903 true "" "plot count students with [degree = \"UG\"]"
+"post-graduate" 1.0 0 -5298144 true "" "plot count students with [degree = \"PG\"]"
+"high-skilled" 1.0 0 -14439633 true "" "plot count students with [degree = \"HS\"]"
+
+BUTTON
+95
+25
+158
+58
+NIL
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+PLOT
+220
+235
+615
+385
+Degree Distribution of Students
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "let max-degree max [count link-neighbors] of students\nset-plot-x-range 1 (max-degree + 1)  ;; + 1 to make room for the wid\nhistogram [count link-neighbors] of students"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -685,5 +922,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
