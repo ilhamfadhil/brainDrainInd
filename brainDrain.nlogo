@@ -3,6 +3,8 @@ breed [pros pro]
 breed [native-inas native-ina]
 breed [native-abrs native-abr]
 
+extensions [nw]
+
 globals [
   ina-patches  ;; domestics patches
   abr-patches  ;; abroad patches
@@ -44,6 +46,7 @@ to setup
 end
 
 to go
+
   scholarship
   study
   emigrate
@@ -51,8 +54,11 @@ to go
   die-naturally
   new-cohort
   become-hs
+  pro-create-link
+  link-die
   year-tick
   tick
+
 end
 
 to create-student
@@ -81,7 +87,7 @@ to create-native
     move-to-empty-one-of ina-patches
     set color orange
   ]
-  create-native-abrs 25 [
+  create-native-abrs 50 [ ;; assuming more foreigner in abroad
     move-to-empty-one-of abr-patches
     set color orange
   ]
@@ -173,6 +179,9 @@ to emigrate
   ask students [
     if status = "ABR" and pcolor = 19 [
       move-to-empty-one-of abr-patches
+      ask students [
+        create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
+      ]
     ]
     if status = "INA" and pcolor = 99 [
     move-to-empty-one-of ina-patches
@@ -201,6 +210,7 @@ to study
     ]
   ]
   earn-knowledge-ug
+  earn-knowledge-pg
   graduate-ug
   study-pg
 end
@@ -210,6 +220,16 @@ to earn-knowledge-ug ;; function to create knowledge in each agent
   if ticks mod 13 = 0 [ ;; assumed for each semester
     ask students with [degree ="UG" and college = TRUE] [
       set knowledge lput earn-knowledge 0.6 knowledge
+    ]
+  ]
+
+end
+
+to earn-knowledge-pg
+
+  if ticks mod 13 = 0 [
+    ask students with [degree ="PG" and college = TRUE] [
+      set knowledge lput earn-knowledge 0.9 knowledge
     ]
   ]
 
@@ -229,13 +249,13 @@ to study-pg ;; study protocol for post graduate student
 
 end
 
-to become-hs
+to become-hs ;; protocol of changing post-graduate student become high-skilled worker
 
   ask students with [study-time <= 0 and degree = "PG" and college = TRUE] [
     set college FALSE
     set degree "HS"
     set color magenta
-    set skill precision (sum knowledge / length knowledge) 2
+    set skill precision (sum knowledge / length knowledge) 2 ;; convert knowledge into skill
   ]
 
 end
@@ -267,6 +287,26 @@ to die-naturally ;; process to die for student who is not undergraduate and post
 
   ask students with [age >= 21 and color = green] [ die ]
   ask students with [age >= 22 and college = FALSE and degree = "UG"] [ die ]
+
+end
+
+to link-die ;; secara random 20% dari link yang ada akan hilang
+
+  if ticks mod 52 = 0 [
+    ask friendships [
+      if random-float 100 < 20 [
+        die
+      ]
+    ]
+  ]
+
+end
+
+to update-link
+
+  ask students with [(count turtles-on abr-patches in-radius 5 / count link-neighbors) >= 0.8] [
+
+  ]
 
 end
 
@@ -356,6 +396,14 @@ to-report n-recruit [x y z] ;; create number of targeted list
   report [round (count students-on y in-radius 5 * z) ]  of x
   ;; example:
   ;;         n-recruit agent-num patches prob
+
+end
+
+to-report perc-friends-nearby [ x ]
+
+  let turtle-nearby [count turtles in-radius 5 - 1] of x
+  let total-linked [count link-neighbors] of x
+  report turtle-nearby / total-linked
 
 end
 @#$#@#$#@
