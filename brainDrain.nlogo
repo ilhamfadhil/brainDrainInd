@@ -9,6 +9,7 @@ globals [
   ina-patches  ;; domestics patches
   abr-patches  ;; abroad patches
   year         ;; to mark time of year
+  agg-gdp      ;; agregate gdp
 ]
 
 undirected-link-breed [friendships friendship]
@@ -41,6 +42,7 @@ to setup
   native-create-link
   create-pro
   set year 0
+  system-dynamics-setup
   reset-ticks
 
 end
@@ -58,6 +60,8 @@ to go
   pro-move
   link-die
   year-tick
+  system-dynamics-go
+  system-dynamics-do-plot
   tick
 
 end
@@ -174,7 +178,7 @@ to scholarship
   ;; scholarship opportunity once a year
   if ticks mod 52 = 0 [
     ask students with [degree = "High School"] [
-      if college = FALSE and capital < 113 and random-float 100 < 18 [ ;; scholarship opportunity 18%
+      if college = FALSE and capital < 113 and random-float 100 < 18 [
         ;; chance to get scholarship 18%
         ;; scholarhip add 20 to basic capital
         set capital capital + 20
@@ -233,6 +237,7 @@ to study
   earn-knowledge-pg
   graduate-ug
   study-pg
+
 end
 
 to earn-knowledge-ug ;; function to create knowledge in each agent
@@ -277,6 +282,12 @@ to become-hs ;; protocol of changing post-graduate student become high-skilled w
     set color magenta
     set skill precision (sum knowledge / length knowledge) 2 ;; convert knowledge into skill
   ]
+
+end
+
+to get-married ;; protocol for agent if have spouse or not
+
+
 
 end
 
@@ -327,6 +338,12 @@ to new-cohort
   if (ticks + 1) mod 52 = 0 [
     create-student
   ]
+
+end
+
+to set-sysdyn
+
+  set agg-gdp contribution
 
 end
 
@@ -389,13 +406,14 @@ to-report summary [ x ] ;; function to create summary statistics of a list value
 
 end
 
-to-report perspective [x] ;; create list of friend of students
+to-report perspective [x] ;; create list of friend, native, and recruiters of students
 
   let count-stu-ina count [link-neighbors with [breed = students and status = "INA"]] of x
   let count-stu-abr count [link-neighbors with [breed = students and status = "ABR"]] of x
   let count-na-ina  count [link-neighbors with [breed = native-inas]] of x
   let count-na-abr  count [link-neighbors with [breed = native-abrs]] of x
-  report (list count-stu-ina count-stu-abr count-na-ina count-na-abr)
+  let count-pro     count [link-neighbors with [breed = pros]] of x
+  report (list count-stu-ina count-stu-abr count-na-ina count-na-abr count-pro)
   ;; example:
   ;;          perspective agent-num
 
@@ -418,6 +436,12 @@ to-report perc-friends-nearby [ x ]
   if total-linked > 0 and turtle-nearby > 0 [
     report turtle-nearby / total-linked
   ]
+
+end
+
+to-report contribution
+
+  report mean [capital] of students
 
 end
 @#$#@#$#@
@@ -490,7 +514,7 @@ count students with [color = black]
 MONITOR
 10
 180
-100
+85
 225
 Total Students
 count students
@@ -571,10 +595,10 @@ count students with [degree = \"HS\" and status = \"ABR\"]
 11
 
 PLOT
-400
-75
-795
-225
+315
+25
+710
+175
 Number of Students
 Ticks
 Number of Student
@@ -608,10 +632,10 @@ NIL
 1
 
 PLOT
-400
-235
-795
-385
+315
+180
+710
+330
 Degree Distribution of Students
 NIL
 NIL
@@ -635,6 +659,24 @@ count students with [degree = \"HS\" and status = \"INA\"]
 17
 1
 11
+
+PLOT
+315
+335
+710
+485
+Test System Dynamics
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"gdp-fund" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -981,6 +1023,30 @@ Polygon -7500403 true true 30 75 75 30 270 225 225 270
 NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
+1.0
+    org.nlogo.sdm.gui.AggregateDrawing 8
+        org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 251 107 60 40
+            org.nlogo.sdm.gui.WrappedStock "gdp-fund" "100" 1
+        org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 79 110 30 30
+        org.nlogo.sdm.gui.RateConnection 3 109 125 187 126 239 126 NULL NULL 0 0 0
+            org.jhotdraw.figures.ChopEllipseConnector REF 3
+            org.jhotdraw.standard.ChopBoxConnector REF 1
+            org.nlogo.sdm.gui.WrappedRate "contribution" "gdp-inflow"
+                org.nlogo.sdm.gui.WrappedReservoir  REF 2 0
+        org.nlogo.sdm.gui.RateConnection 3 323 124 374 122 447 121 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 1
+            org.jhotdraw.figures.ChopEllipseConnector
+                org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 446 106 30 30
+            org.nlogo.sdm.gui.WrappedRate "gdp-fund * gdp-outflow-rate" "gdp-outflow" REF 2
+                org.nlogo.sdm.gui.WrappedReservoir  0   REF 12
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 306 21 50 50
+            org.nlogo.sdm.gui.WrappedConverter "0.2" "gdp-outflow-rate"
+        org.nlogo.sdm.gui.BindingConnection 2 341 60 374 122 NULL NULL 0 0 0
+            org.jhotdraw.contrib.ChopDiamondConnector REF 15
+            org.nlogo.sdm.gui.ChopRateConnector REF 9
+        org.nlogo.sdm.gui.BindingConnection 2 323 124 374 122 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 1
+            org.nlogo.sdm.gui.ChopRateConnector REF 9
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
