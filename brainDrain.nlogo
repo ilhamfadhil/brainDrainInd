@@ -41,13 +41,16 @@ to setup
   create-student
   native-create-link
   create-pro
-  set year 0
   system-dynamics-setup
+  set year 0
   reset-ticks
 
 end
 
 to go
+
+  system-dynamics-go
+
 
   scholarship
   study
@@ -60,7 +63,7 @@ to go
   pro-move
   link-die
   year-tick
-  system-dynamics-go
+
   system-dynamics-do-plot
   tick
 
