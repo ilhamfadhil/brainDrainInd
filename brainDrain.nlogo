@@ -55,6 +55,7 @@ to go
   new-cohort
   become-hs
   pro-create-link
+  pro-move
   link-die
   year-tick
   tick
@@ -108,12 +109,31 @@ to create-pro
 end
 
 to native-create-link
+
   ask native-inas [
     create-friendships-with other n-of (count turtles-on ina-patches in-radius 5) turtles-on ina-patches in-radius 5
   ]
   ask native-abrs [
     create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
   ]
+
+end
+
+to pro-move
+
+  if ticks mod 52 = 0 [
+    ask pros-on ina-patches [
+      ask my-links [die]
+      move-to-empty-one-of ina-patches
+      create-friendships-with other n-of (count turtles-on ina-patches in-radius 5) turtles-on ina-patches in-radius 5
+    ]
+    ask pros-on abr-patches [
+      ask my-links [die]
+      move-to-empty-one-of abr-patches
+      create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
+    ]
+  ]
+
 end
 
 to pro-create-link
@@ -180,7 +200,7 @@ to emigrate
     if status = "ABR" and pcolor = 19 [
       move-to-empty-one-of abr-patches
       ask students [
-        create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
+        create-friendships-with other n-of (count turtles-on abr-patches in-radius 10) turtles-on abr-patches in-radius 10
       ]
     ]
     if status = "INA" and pcolor = 99 [
@@ -302,14 +322,6 @@ to link-die ;; secara random 20% dari link yang ada akan hilang
 
 end
 
-to update-link
-
-  ask students with [(count turtles-on abr-patches in-radius 5 / count link-neighbors) >= 0.8] [
-
-  ]
-
-end
-
 to new-cohort
 
   if (ticks + 1) mod 52 = 0 [
@@ -403,7 +415,9 @@ to-report perc-friends-nearby [ x ]
 
   let turtle-nearby [count turtles in-radius 5 - 1] of x
   let total-linked [count link-neighbors] of x
-  report turtle-nearby / total-linked
+  if total-linked > 0 and turtle-nearby > 0 [
+    report turtle-nearby / total-linked
+  ]
 
 end
 @#$#@#$#@
@@ -476,7 +490,7 @@ count students with [color = black]
 MONITOR
 10
 180
-85
+100
 225
 Total Students
 count students
@@ -507,10 +521,10 @@ year
 11
 
 BUTTON
-20
-375
-145
-408
+170
+25
+295
+58
 setup go 8 years
 setup repeat 52 * 8 [go]
 NIL
@@ -528,7 +542,7 @@ MONITOR
 77
 207
 122
-num-pg-students
+num-pg-abr
 count students with [degree = \"PG\" and status = \"ABR\"]
 17
 1
@@ -546,20 +560,20 @@ count students with [color = 75 and status = \"INA\"]
 11
 
 MONITOR
+215
 75
-290
-132
-335
-num-hs
-count students with [degree = \"HS\"]
+292
+120
+num-hs-abr
+count students with [degree = \"HS\" and status = \"ABR\"]
 17
 1
 11
 
 PLOT
-220
+400
 75
-615
+795
 225
 Number of Students
 Ticks
@@ -583,7 +597,7 @@ BUTTON
 58
 NIL
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -594,9 +608,9 @@ NIL
 1
 
 PLOT
-220
+400
 235
-615
+795
 385
 Degree Distribution of Students
 NIL
@@ -610,6 +624,17 @@ false
 "" ""
 PENS
 "default" 1.0 1 -16777216 true "" "let max-degree max [count link-neighbors] of students\nset-plot-x-range 1 (max-degree + 1)  ;; + 1 to make room for the wid\nhistogram [count link-neighbors] of students"
+
+MONITOR
+215
+130
+290
+175
+num-hs-ina
+count students with [degree = \"HS\" and status = \"INA\"]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
