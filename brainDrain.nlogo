@@ -700,7 +700,7 @@ PLOT
 345
 760
 495
-System Dynamics Test and Married Test
+System Dynamics
 Time
 NIL
 0.0
@@ -711,8 +711,8 @@ true
 true
 "" ""
 PENS
-"Patents" 1.0 0 -2674135 true "" ""
 "gdp-fund" 1.0 0 -7500403 true "" ""
+"Patents" 1.0 0 -2674135 true "" ""
 
 PLOT
 5
