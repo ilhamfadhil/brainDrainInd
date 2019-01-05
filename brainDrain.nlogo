@@ -24,6 +24,8 @@ students-own [
   degree       ;; title degree
   knowledge    ;; knowledge during study period
   skill        ;; skill after become hs worker
+  married?     ;; marriage status
+  return       ;; return decision
 ]
 
 to setup
@@ -49,7 +51,7 @@ end
 
 to go
 
-  system-dynamics-go
+  ;system-dynamics-go
 
 
   scholarship
@@ -59,12 +61,14 @@ to go
   die-naturally
   new-cohort
   become-hs
+  get-married
+  hs-return
   pro-create-link
   pro-move
   link-die
   year-tick
 
-  system-dynamics-do-plot
+  ;system-dynamics-do-plot
   tick
 
 end
@@ -82,6 +86,7 @@ to create-student
     set degree "High School"
     set knowledge []
     set skill 0
+    set married? FALSE
   ]
   ask students [
     create-friendships-with other n-of (count students in-radius 5) students in-radius 5
@@ -184,7 +189,7 @@ to scholarship
       if college = FALSE and capital < 113 and random-float 100 < 18 [
         ;; chance to get scholarship 18%
         ;; scholarhip add 20 to basic capital
-        set capital capital + 20
+        set capital capital + 20 + (gdp-fund-tert-edu / gdp-outflow)
       ]
     ]
    scholarship-pg
@@ -290,7 +295,13 @@ end
 
 to get-married ;; protocol for agent if have spouse or not
 
-
+  if ticks mod 26 = 0 [ ;; seek for spouse twice a year
+    ask students with [degree = "HS" and married? = FALSE] [ ;; only for HS type and not yet married
+      if random-float 100 < 60 [ ;; there are 60% probability for each agent to get married
+        set married? TRUE
+      ]
+    ]
+  ]
 
 end
 
@@ -343,6 +354,17 @@ to new-cohort
   ]
 
 end
+
+to hs-return
+  ask students with [degree = "HS" and status = "ABR"]
+    [if married? = TRUE [
+      set return random-float 0.4
+     move-to-empty-one-of ina-patches
+      set status "INA"
+      ]
+  ]
+end
+
 
 to set-sysdyn
 
@@ -668,18 +690,19 @@ PLOT
 335
 710
 485
-Test System Dynamics
-NIL
+System Dynamics Test and Married Test
+Time
 NIL
 0.0
 10.0
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
 "gdp-fund" 1.0 0 -16777216 true "" ""
+"married-HS" 1.0 0 -7500403 true "" "plot count students with [ married? = TRUE and degree = \"HS\" ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1027,29 +1050,59 @@ NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
 1.0
-    org.nlogo.sdm.gui.AggregateDrawing 8
+    org.nlogo.sdm.gui.AggregateDrawing 19
         org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 251 107 60 40
-            org.nlogo.sdm.gui.WrappedStock "gdp-fund" "100" 1
+            org.nlogo.sdm.gui.WrappedStock "gdp-fund" "0.04" 1
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 79 110 30 30
-        org.nlogo.sdm.gui.RateConnection 3 109 125 187 126 239 126 NULL NULL 0 0 0
+        org.nlogo.sdm.gui.RateConnection 3 109 125 174 125 239 126 NULL NULL 0 0 0
             org.jhotdraw.figures.ChopEllipseConnector REF 3
             org.jhotdraw.standard.ChopBoxConnector REF 1
-            org.nlogo.sdm.gui.WrappedRate "contribution" "gdp-inflow"
+            org.nlogo.sdm.gui.WrappedRate "gdp-growth" "gdp-inflow"
                 org.nlogo.sdm.gui.WrappedReservoir  REF 2 0
-        org.nlogo.sdm.gui.RateConnection 3 323 124 374 122 447 121 NULL NULL 0 0 0
+        org.nlogo.sdm.gui.RateConnection 3 323 124 385 122 447 121 NULL NULL 0 0 0
             org.jhotdraw.standard.ChopBoxConnector REF 1
             org.jhotdraw.figures.ChopEllipseConnector
                 org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 446 106 30 30
-            org.nlogo.sdm.gui.WrappedRate "gdp-fund * gdp-outflow-rate" "gdp-outflow" REF 2
+            org.nlogo.sdm.gui.WrappedRate "gdp-fund" "gdp-outflow" REF 2
                 org.nlogo.sdm.gui.WrappedReservoir  0   REF 12
-        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 306 21 50 50
-            org.nlogo.sdm.gui.WrappedConverter "0.2" "gdp-outflow-rate"
-        org.nlogo.sdm.gui.BindingConnection 2 341 60 374 122 NULL NULL 0 0 0
-            org.jhotdraw.contrib.ChopDiamondConnector REF 15
-            org.nlogo.sdm.gui.ChopRateConnector REF 9
-        org.nlogo.sdm.gui.BindingConnection 2 323 124 374 122 NULL NULL 0 0 0
+        org.nlogo.sdm.gui.BindingConnection 2 323 124 385 122 NULL NULL 0 0 0
             org.jhotdraw.standard.ChopBoxConnector REF 1
             org.nlogo.sdm.gui.ChopRateConnector REF 9
+        org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 230 268 60 40
+            org.nlogo.sdm.gui.WrappedStock "Patents" "194" 0
+        org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 56 272 30 30
+        org.nlogo.sdm.gui.RateConnection 3 86 287 152 287 218 287 NULL NULL 0 0 0
+            org.jhotdraw.figures.ChopEllipseConnector REF 20
+            org.jhotdraw.standard.ChopBoxConnector REF 18
+            org.nlogo.sdm.gui.WrappedRate "count students with [degree = \"HS\" and status = \"INA\"] * 0.2" "Incoming-patents"
+                org.nlogo.sdm.gui.WrappedReservoir  REF 19 0
+        org.nlogo.sdm.gui.RateConnection 3 302 286 347 285 393 285 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 18
+            org.jhotdraw.figures.ChopEllipseConnector
+                org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 392 270 30 30
+            org.nlogo.sdm.gui.WrappedRate "Patents" "Last-term-patents" REF 19
+                org.nlogo.sdm.gui.WrappedReservoir  0   REF 29
+        org.nlogo.sdm.gui.BindingConnection 2 302 286 347 285 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 18
+            org.nlogo.sdm.gui.ChopRateConnector REF 26
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 139 187 50 50
+            org.nlogo.sdm.gui.WrappedConverter "Last-term-patents * 0.017" "Tech-dev"
+        org.nlogo.sdm.gui.BindingConnection 2 347 285 181 219 NULL NULL 0 0 0
+            org.nlogo.sdm.gui.ChopRateConnector REF 26
+            org.jhotdraw.contrib.ChopDiamondConnector REF 35
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 37 156 50 50
+            org.nlogo.sdm.gui.WrappedConverter "Tech-dev * 0.016" "gdp-growth"
+        org.nlogo.sdm.gui.BindingConnection 2 144 206 81 186 NULL NULL 0 0 0
+            org.jhotdraw.contrib.ChopDiamondConnector REF 35
+            org.jhotdraw.contrib.ChopDiamondConnector REF 40
+        org.nlogo.sdm.gui.BindingConnection 2 78 172 174 125 NULL NULL 0 0 0
+            org.jhotdraw.contrib.ChopDiamondConnector REF 40
+            org.nlogo.sdm.gui.ChopRateConnector REF 4
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 456 182 50 50
+            org.nlogo.sdm.gui.WrappedConverter "gdp-outflow * 2.32339e-14 + 0.0156996" "gdp-fund-tert-edu"
+        org.nlogo.sdm.gui.BindingConnection 2 385 122 467 195 NULL NULL 0 0 0
+            org.nlogo.sdm.gui.ChopRateConnector REF 9
+            org.jhotdraw.contrib.ChopDiamondConnector REF 48
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
