@@ -10,6 +10,7 @@ globals [
   abr-patches  ;; abroad patches
   year         ;; to mark time of year
   agg-gdp      ;; agregate gdp
+  total-ina-hs ;; aggregate ina-hs workers
 ]
 
 undirected-link-breed [friendships friendship]
@@ -31,6 +32,7 @@ students-own [
 to setup
 
   clear-all
+  system-dynamics-setup
   set-default-shape turtles "person"
 
   set ina-patches patches with [pxcor > 0] ;; create domestic space
@@ -43,7 +45,7 @@ to setup
   create-student
   native-create-link
   create-pro
-  system-dynamics-setup
+
   set year 0
   reset-ticks
 
@@ -51,8 +53,8 @@ end
 
 to go
 
-  ;system-dynamics-go
-
+  system-dynamics-go
+  system-dynamics-do-plot
 
   scholarship
   study
@@ -66,9 +68,10 @@ to go
   pro-create-link
   pro-move
   link-die
+  set-sysdyn
   year-tick
 
-  ;system-dynamics-do-plot
+
   tick
 
 end
@@ -369,6 +372,7 @@ end
 to set-sysdyn
 
   set agg-gdp contribution
+  set total-ina-hs total-count-ina-hs
 
 end
 
@@ -469,12 +473,18 @@ to-report contribution
   report mean [capital] of students
 
 end
+
+to-report total-count-ina-hs
+
+  report count students with [degree = "HS" and status = "INA"]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-895
-15
-1408
-529
+925
+20
+1438
+534
 -1
 -1
 5.0
@@ -620,9 +630,9 @@ count students with [degree = \"HS\" and status = \"ABR\"]
 11
 
 PLOT
-315
+385
 25
-710
+760
 175
 Number of Students
 Ticks
@@ -657,10 +667,10 @@ NIL
 1
 
 PLOT
-315
-180
-710
-330
+385
+185
+760
+335
 Degree Distribution of Students
 NIL
 NIL
@@ -686,10 +696,10 @@ count students with [degree = \"HS\" and status = \"INA\"]
 11
 
 PLOT
-315
-335
-710
-485
+385
+345
+760
+495
 System Dynamics Test and Married Test
 Time
 NIL
@@ -701,8 +711,29 @@ true
 true
 "" ""
 PENS
-"gdp-fund" 1.0 0 -16777216 true "" ""
-"married-HS" 1.0 0 -7500403 true "" "plot count students with [ married? = TRUE and degree = \"HS\" ]"
+"Patents" 1.0 0 -2674135 true "" ""
+"gdp-fund" 1.0 0 -7500403 true "" ""
+
+PLOT
+5
+345
+380
+495
+High Skilled Workers
+Ticks
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"hs-ina" 1.0 0 -5298144 true "" "plot count students with [degree = \"HS\" and status = \"INA\"]"
+"hs-abr" 1.0 0 -7500403 true "" "plot count students with [degree = \"HS\" and status = \"ABR\"]"
+"pg-abr" 1.0 0 -14439633 true "" "plot count students with [status = \"ABR\" and degree =\"PG\"]"
+"pg-ina" 1.0 0 -14070903 true "" "plot count students with [degree = \"PG\" and status = \"INA\"]"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1049,8 +1080,8 @@ Polygon -7500403 true true 30 75 75 30 270 225 225 270
 NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
-1.0
-    org.nlogo.sdm.gui.AggregateDrawing 19
+2.0
+    org.nlogo.sdm.gui.AggregateDrawing 17
         org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 251 107 60 40
             org.nlogo.sdm.gui.WrappedStock "gdp-fund" "0.04" 1
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 79 110 30 30
@@ -1074,35 +1105,27 @@ NetLogo 6.0.4
         org.nlogo.sdm.gui.RateConnection 3 86 287 152 287 218 287 NULL NULL 0 0 0
             org.jhotdraw.figures.ChopEllipseConnector REF 20
             org.jhotdraw.standard.ChopBoxConnector REF 18
-            org.nlogo.sdm.gui.WrappedRate "count students with [degree = \"HS\" and status = \"INA\"] * 0.2" "Incoming-patents"
+            org.nlogo.sdm.gui.WrappedRate "total-ina-hs * 2.2" "Incoming-patents"
                 org.nlogo.sdm.gui.WrappedReservoir  REF 19 0
-        org.nlogo.sdm.gui.RateConnection 3 302 286 347 285 393 285 NULL NULL 0 0 0
-            org.jhotdraw.standard.ChopBoxConnector REF 18
-            org.jhotdraw.figures.ChopEllipseConnector
-                org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 392 270 30 30
-            org.nlogo.sdm.gui.WrappedRate "Patents" "Last-term-patents" REF 19
-                org.nlogo.sdm.gui.WrappedReservoir  0   REF 29
-        org.nlogo.sdm.gui.BindingConnection 2 302 286 347 285 NULL NULL 0 0 0
-            org.jhotdraw.standard.ChopBoxConnector REF 18
-            org.nlogo.sdm.gui.ChopRateConnector REF 26
+        org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 392 270 30 30
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 139 187 50 50
-            org.nlogo.sdm.gui.WrappedConverter "Last-term-patents * 0.017" "Tech-dev"
-        org.nlogo.sdm.gui.BindingConnection 2 347 285 181 219 NULL NULL 0 0 0
-            org.nlogo.sdm.gui.ChopRateConnector REF 26
-            org.jhotdraw.contrib.ChopDiamondConnector REF 35
+            org.nlogo.sdm.gui.WrappedConverter "Patents * 0.017" "Tech-dev"
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 37 156 50 50
             org.nlogo.sdm.gui.WrappedConverter "Tech-dev * 0.016" "gdp-growth"
         org.nlogo.sdm.gui.BindingConnection 2 144 206 81 186 NULL NULL 0 0 0
-            org.jhotdraw.contrib.ChopDiamondConnector REF 35
-            org.jhotdraw.contrib.ChopDiamondConnector REF 40
+            org.jhotdraw.contrib.ChopDiamondConnector REF 27
+            org.jhotdraw.contrib.ChopDiamondConnector REF 29
         org.nlogo.sdm.gui.BindingConnection 2 78 172 174 125 NULL NULL 0 0 0
-            org.jhotdraw.contrib.ChopDiamondConnector REF 40
+            org.jhotdraw.contrib.ChopDiamondConnector REF 29
             org.nlogo.sdm.gui.ChopRateConnector REF 4
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 456 182 50 50
             org.nlogo.sdm.gui.WrappedConverter "gdp-outflow * 2.32339e-14 + 0.0156996" "gdp-fund-tert-edu"
         org.nlogo.sdm.gui.BindingConnection 2 385 122 467 195 NULL NULL 0 0 0
             org.nlogo.sdm.gui.ChopRateConnector REF 9
-            org.jhotdraw.contrib.ChopDiamondConnector REF 48
+            org.jhotdraw.contrib.ChopDiamondConnector REF 37
+        org.nlogo.sdm.gui.BindingConnection 2 219 256 177 223 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 18
+            org.jhotdraw.contrib.ChopDiamondConnector REF 27
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
