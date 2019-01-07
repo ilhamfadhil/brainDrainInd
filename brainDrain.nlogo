@@ -812,21 +812,6 @@ scholarship-plus-pg
 HORIZONTAL
 
 SLIDER
-10
-445
-145
-478
-connections-pro-ina
-connections-pro-ina
-0
-1
-0.0
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
 525
 45
 705
@@ -886,12 +871,12 @@ NIL
 0.0
 10.0
 0.0
-10.0
+0.03
 true
 false
 "" ""
 PENS
-"gdp-fund" 1.0 0 -7500403 true "" "plot gdp-fund"
+"gdp-fund-tert-edu" 1.0 0 -7500403 true "" "\nplot gdp-fund-tert-edu"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1255,7 +1240,7 @@ NetLogo 6.0.4
         org.nlogo.sdm.gui.RateConnection 3 86 290 185 308 284 326 NULL NULL 0 0 0
             org.jhotdraw.figures.ChopEllipseConnector REF 12
             org.jhotdraw.standard.ChopBoxConnector REF 10
-            org.nlogo.sdm.gui.WrappedRate "total-ina-hs * 2.2" "Incoming-patents"
+            org.nlogo.sdm.gui.WrappedRate "(total-ina-hs * 2.2 ) / 52" "Incoming-patents"
                 org.nlogo.sdm.gui.WrappedReservoir  REF 11 0
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 392 270 30 30
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 139 187 50 50
