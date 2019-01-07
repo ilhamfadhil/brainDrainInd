@@ -15,10 +15,15 @@ globals [
 
 undirected-link-breed [friendships friendship]
 
+native-abrs-own[
+  tolerance-abr
+]
+native-inas-own[
+  tolerance-ina
+]
 students-own [
   age          ;; student's age
   college      ;; college status
-  decision-abr ;; variable decision to study abroad
   status       ;; living location of students
   capital      ;; financial status
   study-time   ;; length of study
@@ -83,13 +88,12 @@ to create-student
     set age int random-normal 17 1
     set color green
     set college FALSE
-    set decision-abr random-normal 0.25 0.1
     set status "INA"
     set capital random-normal 100 20
     set degree "High School"
     set knowledge []
     set skill 0
-    set married? FALSE
+    set married? 0
   ]
   ask students [
     create-friendships-with other n-of (count students in-radius 5) students in-radius 5
@@ -102,10 +106,12 @@ to create-native
   create-native-inas 25 [
     move-to-empty-one-of ina-patches
     set color orange
+    set tolerance-ina random-float tolerance-level-native-ina
   ]
-  create-native-abrs 50 [ ;; assuming more foreigner in abroad
+  create-native-abrs 50 [ ;; assuming more foreigner abroad
     move-to-empty-one-of abr-patches
     set color orange
+    set tolerance-abr random-float tolerance-level-native-abr
   ]
 
 end
@@ -125,11 +131,15 @@ end
 
 to native-create-link
 
-  ask native-inas [
-    create-friendships-with other n-of (count turtles-on ina-patches in-radius 5) turtles-on ina-patches in-radius 5
-  ]
-  ask native-abrs [
-    create-friendships-with other n-of (count turtles-on abr-patches in-radius 5) turtles-on abr-patches in-radius 5
+  if ticks mod 52 = 0 [ ;; native create links once a year
+    ask native-inas [
+      let num n-recruit self ina-patches tolerance-ina
+      create-friendships-with other n-of (num) turtles-on ina-patches in-radius 5
+    ]
+    ask native-abrs [
+      let num n-recruit self abr-patches tolerance-abr
+      create-friendships-with other n-of (num) turtles-on abr-patches in-radius 5
+    ]
   ]
 
 end
@@ -189,10 +199,10 @@ to scholarship
   ;; scholarship opportunity once a year
   if ticks mod 52 = 0 [
     ask students with [degree = "High School"] [
-      if college = FALSE and capital < 113 and random-float 100 < 18 [
+      if college = FALSE and capital < 113 and random-float 100 < scholarship-plus-ug [
         ;; chance to get scholarship 18%
         ;; scholarhip add 20 to basic capital
-        set capital capital + 20 + (gdp-fund-tert-edu / gdp-outflow)
+        set capital capital + 20 + (gdp-fund-tert-edu / gdp-fund)
       ]
     ]
    scholarship-pg
@@ -202,8 +212,8 @@ end
 
 to scholarship-pg
   ask students with [college = FALSE and degree = "UG"] [
-      if random-float 100 < 80 [
-        set capital capital + 60
+      if random-float 100 < scholarship-plus-pg [
+        set capital capital + 60 + (gdp-fund-tert-edu / gdp-fund)
       ]
     ]
 end
@@ -299,9 +309,9 @@ end
 to get-married ;; protocol for agent if have spouse or not
 
   if ticks mod 26 = 0 [ ;; seek for spouse twice a year
-    ask students with [degree = "HS" and married? = FALSE] [ ;; only for HS type and not yet married
+    ask students with [degree = "HS" and married? = 0] [ ;; only for HS type and not yet married
       if random-float 100 < 60 [ ;; there are 60% probability for each agent to get married
-        set married? TRUE
+        set married? 1
       ]
     ]
   ]
@@ -358,14 +368,29 @@ to new-cohort
 
 end
 
-to hs-return
-  ask students with [degree = "HS" and status = "ABR"]
-    [if married? = TRUE [
-      set return random-float 0.4
-     move-to-empty-one-of ina-patches
-      set status "INA"
+to hs-return ;; protocol for high skilled worker comeback to domestic
+
+  if ticks mod 104 = 0 [
+    ask students with [pcolor = 99 and degree = "HS"] [
+      let decision-list (map * [0.125 0.125 0.125 0.125 0.2 0.3] perc-perspective self)
+      ifelse random-float 100 < 30 [ ;; keputusan spouse
+        let decision-abr (item 1 decision-list) + (item 3 decision-list) + (item 4 decision-list) + (item 5 decision-list)
+        let decision-ina (item 0 decision-list) + (item 2 decision-list)
+        if decision-ina > decision-abr [
+          move-to-empty-one-of ina-patches
+          set status "INA"
+        ]
+      ][
+        let decision-abr (item 1 decision-list) + (item 3 decision-list) + (item 4 decision-list)
+        let decision-ina (item 0 decision-list) + (item 2 decision-list) + (item 5 decision-list)
+        if decision-ina > decision-abr [
+          move-to-empty-one-of ina-patches
+          set status "INA"
+        ]
       ]
+    ]
   ]
+
 end
 
 
@@ -442,7 +467,29 @@ to-report perspective [x] ;; create list of friend, native, and recruiters of st
   let count-na-ina  count [link-neighbors with [breed = native-inas]] of x
   let count-na-abr  count [link-neighbors with [breed = native-abrs]] of x
   let count-pro     count [link-neighbors with [breed = pros]] of x
-  report (list count-stu-ina count-stu-abr count-na-ina count-na-abr count-pro)
+  let count-married ([married?] of x) * 3
+  report (list count-stu-ina count-stu-abr count-na-ina count-na-abr count-pro count-married)
+  ;; example:
+  ;;          perspective agent-num
+
+end
+
+to-report perc-perspective [x] ;; create list of friend, native, and recruiters of students
+
+  let count-stu-ina count [link-neighbors with [breed = students and status = "INA"]] of x
+  let count-stu-abr count [link-neighbors with [breed = students and status = "ABR"]] of x
+  let count-na-ina  count [link-neighbors with [breed = native-inas]] of x
+  let count-na-abr  count [link-neighbors with [breed = native-abrs]] of x
+  let count-pro     count [link-neighbors with [breed = pros]] of x
+  let count-married ([married?] of x) * 3
+  let count-total sum perspective x
+  let perc-stu-ina precision (count-stu-ina / count-total) 3
+  let perc-stu-abr precision (count-stu-abr / count-total) 3
+  let perc-na-ina precision (count-na-ina / count-total) 3
+  let perc-na-abr precision (count-na-abr / count-total) 3
+  let perc-pro precision (count-pro / count-total) 3
+  let perc-married precision (count-married / count-total) 3
+  report (list perc-stu-ina perc-stu-abr perc-na-ina perc-na-abr perc-pro perc-married)
   ;; example:
   ;;          perspective agent-num
 
@@ -481,13 +528,13 @@ to-report total-count-ina-hs
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-925
-20
-1438
-534
+935
+30
+1444
+540
 -1
 -1
-5.0
+4.9604
 1
 10
 1
@@ -525,10 +572,10 @@ NIL
 1
 
 MONITOR
-12
-77
-90
-122
+5
+80
+80
+125
 num-ug-abr
 count students with [color = yellow]
 2
@@ -536,10 +583,10 @@ count students with [color = yellow]
 11
 
 MONITOR
-10
-130
-87
-175
+85
+80
+160
+125
 num-ug-ina
 count students with [color = black]
 2
@@ -547,10 +594,10 @@ count students with [color = black]
 11
 
 MONITOR
-10
-180
-85
+5
 225
+95
+270
 Total Students
 count students
 17
@@ -558,21 +605,21 @@ count students
 11
 
 MONITOR
-10
-235
-145
-280
-graduated-ug-students
+5
+275
+147
+320
+Graduated-ug-students
 count students with [college = FALSE and degree = \"UG\"]
 17
 1
 11
 
 MONITOR
-10
-290
-67
-335
+5
+325
+62
+370
 Year
 year
 17
@@ -597,10 +644,10 @@ NIL
 1
 
 MONITOR
-96
-77
-207
-122
+5
+125
+80
+170
 num-pg-abr
 count students with [degree = \"PG\" and status = \"ABR\"]
 17
@@ -608,10 +655,10 @@ count students with [degree = \"PG\" and status = \"ABR\"]
 11
 
 MONITOR
-97
-129
-207
-174
+85
+125
+160
+170
 num-pg-ina
 count students with [color = 75 and status = \"INA\"]
 17
@@ -619,10 +666,10 @@ count students with [color = 75 and status = \"INA\"]
 11
 
 MONITOR
+5
+170
+80
 215
-75
-292
-120
 num-hs-abr
 count students with [degree = \"HS\" and status = \"ABR\"]
 17
@@ -630,10 +677,10 @@ count students with [degree = \"HS\" and status = \"ABR\"]
 11
 
 PLOT
-385
-25
-760
-175
+520
+85
+895
+235
 Number of Students
 Ticks
 Number of Student
@@ -667,10 +714,10 @@ NIL
 1
 
 PLOT
+520
+235
+895
 385
-185
-760
-335
 Degree Distribution of Students
 NIL
 NIL
@@ -682,13 +729,13 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "let max-degree max [count link-neighbors] of students\nset-plot-x-range 1 (max-degree + 1)  ;; + 1 to make room for the wid\nhistogram [count link-neighbors] of students"
+"default" 1.0 1 -16777216 true "" "let max-degree max [count link-neighbors] of students\nset-plot-x-range 0 (max-degree + 1)  ;; + 1 to make room for the wid\nhistogram [count link-neighbors] of students"
 
 MONITOR
+85
+170
+160
 215
-130
-290
-175
 num-hs-ina
 count students with [degree = \"HS\" and status = \"INA\"]
 17
@@ -696,11 +743,11 @@ count students with [degree = \"HS\" and status = \"INA\"]
 11
 
 PLOT
+520
 385
-345
-760
-495
-System Dynamics
+895
+540
+Patents
 Time
 NIL
 0.0
@@ -708,17 +755,16 @@ NIL
 0.0
 10.0
 true
-true
+false
 "" ""
 PENS
-"gdp-fund" 1.0 0 -7500403 true "" ""
-"Patents" 1.0 0 -2674135 true "" ""
+"Patents" 1.0 0 -2674135 true "" "plot patents"
 
 PLOT
-5
-345
-380
-495
+170
+85
+520
+235
 High Skilled Workers
 Ticks
 NIL
@@ -734,6 +780,118 @@ PENS
 "hs-abr" 1.0 0 -7500403 true "" "plot count students with [degree = \"HS\" and status = \"ABR\"]"
 "pg-abr" 1.0 0 -14439633 true "" "plot count students with [status = \"ABR\" and degree =\"PG\"]"
 "pg-ina" 1.0 0 -14070903 true "" "plot count students with [degree = \"PG\" and status = \"INA\"]"
+
+SLIDER
+320
+10
+502
+43
+scholarship-plus-ug
+scholarship-plus-ug
+0
+100
+41.0
+1
+1
+%
+HORIZONTAL
+
+SLIDER
+320
+45
+502
+78
+scholarship-plus-pg
+scholarship-plus-pg
+0
+100
+74.0
+1
+1
+%
+HORIZONTAL
+
+SLIDER
+10
+445
+145
+478
+connections-pro-ina
+connections-pro-ina
+0
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+525
+45
+705
+78
+tolerance-level-native-abr
+tolerance-level-native-abr
+0
+1
+0.25
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+525
+10
+705
+43
+tolerance-level-native-ina
+tolerance-level-native-ina
+0
+1
+0.51
+0.01
+1
+NIL
+HORIZONTAL
+
+PLOT
+170
+235
+520
+385
+Distribustion of Student's Capital
+Capital
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"capital-all" 1.0 1 -14070903 true "" "let max-capital max [capital] of students\nlet min-capital min [capital] of students\nset-plot-x-range (min-capital - 10) (max-capital + 10)\nset-histogram-num-bars 30 ;; set number of bars in histogram plot\nhistogram [capital] of students"
+"capital-pg" 1.0 1 -14439633 true "" "set-histogram-num-bars 30 ;; set number of bars in histogram plot\nhistogram [capital] of students with [degree = \"PG\"]"
+
+PLOT
+170
+385
+520
+540
+GDP Fund
+Tick
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"gdp-fund" 1.0 0 -7500403 true "" "plot gdp-fund"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1081,7 +1239,7 @@ NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
 2.0
-    org.nlogo.sdm.gui.AggregateDrawing 17
+    org.nlogo.sdm.gui.AggregateDrawing 20
         org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 251 107 60 40
             org.nlogo.sdm.gui.WrappedStock "gdp-fund" "0.04" 1
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 79 110 30 30
@@ -1090,42 +1248,48 @@ NetLogo 6.0.4
             org.jhotdraw.standard.ChopBoxConnector REF 1
             org.nlogo.sdm.gui.WrappedRate "gdp-growth" "gdp-inflow"
                 org.nlogo.sdm.gui.WrappedReservoir  REF 2 0
-        org.nlogo.sdm.gui.RateConnection 3 323 124 385 122 447 121 NULL NULL 0 0 0
-            org.jhotdraw.standard.ChopBoxConnector REF 1
-            org.jhotdraw.figures.ChopEllipseConnector
-                org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 446 106 30 30
-            org.nlogo.sdm.gui.WrappedRate "gdp-fund" "gdp-outflow" REF 2
-                org.nlogo.sdm.gui.WrappedReservoir  0   REF 12
-        org.nlogo.sdm.gui.BindingConnection 2 323 124 385 122 NULL NULL 0 0 0
-            org.jhotdraw.standard.ChopBoxConnector REF 1
-            org.nlogo.sdm.gui.ChopRateConnector REF 9
-        org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 230 268 60 40
+        org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 499 106 30 30
+        org.nlogo.sdm.gui.StockFigure "attributes" "attributes" 1 "FillColor" "Color" 225 225 182 296 314 60 40
             org.nlogo.sdm.gui.WrappedStock "Patents" "194" 0
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 56 272 30 30
-        org.nlogo.sdm.gui.RateConnection 3 86 287 152 287 218 287 NULL NULL 0 0 0
-            org.jhotdraw.figures.ChopEllipseConnector REF 20
-            org.jhotdraw.standard.ChopBoxConnector REF 18
+        org.nlogo.sdm.gui.RateConnection 3 86 290 185 308 284 326 NULL NULL 0 0 0
+            org.jhotdraw.figures.ChopEllipseConnector REF 12
+            org.jhotdraw.standard.ChopBoxConnector REF 10
             org.nlogo.sdm.gui.WrappedRate "total-ina-hs * 2.2" "Incoming-patents"
-                org.nlogo.sdm.gui.WrappedReservoir  REF 19 0
+                org.nlogo.sdm.gui.WrappedReservoir  REF 11 0
         org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 392 270 30 30
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 139 187 50 50
             org.nlogo.sdm.gui.WrappedConverter "Patents * 0.017" "Tech-dev"
         org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 37 156 50 50
             org.nlogo.sdm.gui.WrappedConverter "Tech-dev * 0.016" "gdp-growth"
         org.nlogo.sdm.gui.BindingConnection 2 144 206 81 186 NULL NULL 0 0 0
-            org.jhotdraw.contrib.ChopDiamondConnector REF 27
-            org.jhotdraw.contrib.ChopDiamondConnector REF 29
+            org.jhotdraw.contrib.ChopDiamondConnector REF 19
+            org.jhotdraw.contrib.ChopDiamondConnector REF 21
         org.nlogo.sdm.gui.BindingConnection 2 78 172 174 125 NULL NULL 0 0 0
-            org.jhotdraw.contrib.ChopDiamondConnector REF 29
+            org.jhotdraw.contrib.ChopDiamondConnector REF 21
             org.nlogo.sdm.gui.ChopRateConnector REF 4
-        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 456 182 50 50
-            org.nlogo.sdm.gui.WrappedConverter "gdp-outflow * 2.32339e-14 + 0.0156996" "gdp-fund-tert-edu"
-        org.nlogo.sdm.gui.BindingConnection 2 385 122 467 195 NULL NULL 0 0 0
-            org.nlogo.sdm.gui.ChopRateConnector REF 9
-            org.jhotdraw.contrib.ChopDiamondConnector REF 37
-        org.nlogo.sdm.gui.BindingConnection 2 219 256 177 223 NULL NULL 0 0 0
-            org.jhotdraw.standard.ChopBoxConnector REF 18
-            org.jhotdraw.contrib.ChopDiamondConnector REF 27
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 348 211 50 50
+            org.nlogo.sdm.gui.WrappedConverter "gdp-fund * 2.32339e-14 + 0.0156996" "gdp-fund-tert-edu"
+        org.nlogo.sdm.gui.BindingConnection 2 284 302 178 222 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 10
+            org.jhotdraw.contrib.ChopDiamondConnector REF 19
+        org.nlogo.sdm.gui.BindingConnection 2 308 159 361 222 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 1
+            org.jhotdraw.contrib.ChopDiamondConnector REF 29
+        org.nlogo.sdm.gui.RateConnection 3 368 333 441 333 515 334 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 10
+            org.jhotdraw.figures.ChopEllipseConnector
+                org.nlogo.sdm.gui.ReservoirFigure "attributes" "attributes" 1 "FillColor" "Color" 192 192 192 514 319 30 30
+            org.nlogo.sdm.gui.WrappedRate "Patents / patents-age" "patents-outflow" REF 11
+                org.nlogo.sdm.gui.WrappedReservoir  0   REF 40
+        org.nlogo.sdm.gui.ConverterFigure "attributes" "attributes" 1 "FillColor" "Color" 130 188 183 473 413 50 50
+            org.nlogo.sdm.gui.WrappedConverter "1040" "patents-age"
+        org.nlogo.sdm.gui.BindingConnection 2 489 421 441 333 NULL NULL 0 0 0
+            org.jhotdraw.contrib.ChopDiamondConnector REF 43
+            org.nlogo.sdm.gui.ChopRateConnector REF 37
+        org.nlogo.sdm.gui.BindingConnection 2 368 333 441 333 NULL NULL 0 0 0
+            org.jhotdraw.standard.ChopBoxConnector REF 10
+            org.nlogo.sdm.gui.ChopRateConnector REF 37
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
