@@ -52,3 +52,9 @@ df %>%
   ggplot(aes(x = patents, y = students_HS_INA, 
              color = factor(`scholarship-plus-pg`))) +
   geom_point()
+
+df %>%
+  filter(step == 1080) %>%
+  ggplot(aes(x = students_HS_INA)) +
+  geom_density() +
+  facet_wrap(~ factor(`scholarship-plus-ug`) + factor(`scholarship-plus-pg`))
