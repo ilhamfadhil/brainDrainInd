@@ -58,3 +58,10 @@ df %>%
   ggplot(aes(x = students_HS_INA)) +
   geom_density() +
   facet_wrap(~ factor(`scholarship-plus-ug`) + factor(`scholarship-plus-pg`))
+
+df%>%
+  filter(step == 1080) %>%
+  ggplot(aes(x = students_UG_INA,
+             group = `scholarship-plus-ug` ,
+             color = factor(`scholarship-plus-ug`))) +
+  geom_density()
